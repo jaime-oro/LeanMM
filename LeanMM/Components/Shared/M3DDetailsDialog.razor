@@ -1,0 +1,168 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject DbService DbService
+@inject IDialogService DialogService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<FluentDialogBody>
+    <TitleTemplate>
+        <FluentStack VerticalAlignment="VerticalAlignment.Center">
+            <FluentIcon Value="@(new Icons.Regular.Size20.Document())" />
+            <FluentLabel Typo="Typography.PaneHeader">Detalles del Elemento</FluentLabel>
+        </FluentStack>
+    </TitleTemplate>
+
+    <ChildContent>
+        <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" Style="padding: 1rem 0;">
+            <FluentTextInput Label="Nombre" Value="@m3d.Files?.FirstOrDefault()?.FILE_NAME" ReadOnly="true" Style="width: 100%;" />
+        </FluentStack>
+
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="0" Style="width: 100%;">
+
+            <!-- 1. Export options side-by-side -->
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="15" Wrap="true">
+                <FluentCheckbox Label="Omitir archivos relacionados" />
+                <FluentCheckbox Label="Incluir planos (DFT)" />
+            </FluentStack>
+
+            <!-- 2. Date picker inline with its checkbox -->
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10" VerticalAlignment="VerticalAlignment.Center">
+                <FluentCheckbox Label="Estado en una fecha concreta:" @bind-Value="_useSpecificDate" />
+                <!-- Label removed from DatePicker to save space, width constrained -->
+                <FluentDatePicker @bind-Value="date" Disabled="!_useSpecificDate" Style="width: 140px;" />
+            </FluentStack>
+
+            <FluentDivider Style="width: 100%; margin: 5px 0;" />
+
+            <!-- 3. Post-action and Button on the same line -->
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Style="width: 100%;">
+                <FluentCheckbox Label="Abrir al finalizar" @bind-Value="_openOnFinish" />
+                <FluentButton Appearance="ButtonAppearance.Primary" OnClick="AddTask">
+                    Descargar
+                </FluentButton>
+            </FluentStack>
+
+        </FluentStack>
+
+    </ChildContent>
+
+    <ActionTemplate>
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Dialog.CancelAsync())">
+            Cerrar
+        </FluentButton>
+    </ActionTemplate>
+</FluentDialogBody>
+
+@code {
+    private DateTime? date = DateTime.Today;
+    private bool _useSpecificDate = false;
+    private bool _openOnFinish = true;
+
+    [CascadingParameter]
+    public required IDialogInstance Dialog { get; set; }
+
+    [Parameter]
+    public string? INFOS { get; set; }
+
+    private MMModel3D m3d { get; set; } = new();
+
+    private List<MMElement> els { get; set; } = new();
+    private List<MMElement> visibleEls { get; set; } = new();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        m3d = await DbService.M3D_GetByInfosAsync(INFOS!) ?? new MMModel3D();        
+
+        UpdateVisibleNodes();
+    }
+
+    private async Task ToggleElementAsync(MMElement el)
+    {
+        el.IsExpanded = !el.IsExpanded;
+        el.Children = await DbService.EL_GetChildsByInfosAsync(el.INFOS, el.Level + 1);
+        UpdateVisibleNodes();
+    }
+
+    private void UpdateVisibleNodes()
+    {
+        var flatList = new List<MMElement>();
+        FlattenNodes(els, flatList);
+        visibleEls = flatList;
+    }
+
+    private void FlattenNodes(List<MMElement>? _els, List<MMElement> flatList)
+    {
+        if (_els == null) return;
+        foreach (var _el in _els)
+        {
+            flatList.Add(_el);
+            if (_el.IsExpanded && _el.Children != null)
+            {
+                FlattenNodes(_el.Children, flatList);
+            }
+        }
+    }
+
+    private async Task AddTask()
+    {
+        var task = new LMMTask
+		{
+            USER = ((SimpleAuthenticationStateProvider)AuthStateProvider).UserName,
+
+			NAME = $"{m3d?.MMElement?.Name}",
+			DATE_ADDED = DateTime.Now,
+		};
+
+
+        task.Jobs = await AddJobs(m3d?.MMElement?.INFOS, m3d?.MMElement?.ELID, m3d?.MMElement?.ALID);
+
+        // MODEL_3D Dependientes >> EL_GetChildsByInfosAsync
+        // Añadir sus archivos
+
+        await DbService.LMMTask_Insert(task);
+
+        await Dialog.CloseAsync();
+    }
+
+    private async Task<List<LMMJob>> AddJobs(string? infos, string? elid, string? alid)
+    {
+		if (string.IsNullOrWhiteSpace(infos))
+		{
+			return new List<LMMJob>();
+		}
+
+        var files = await DbService.F_GetByInfosAsync(infos);
+            
+        var jobs = new List<LMMJob>();
+        foreach (var file in files)
+        {
+            jobs.Add(new LMMJob
+            {
+                PHYS_NAME = file.PHYS_NAME,
+                FILE_NAME = file.FILE_NAME,
+				Finished = false
+			});
+		}
+
+		var els = await DbService.EL_GetAllChildsByInfosAsync(infos);
+		foreach (var el in els)
+		{
+			var childJobs = await AddJobs(el.INFOS, el.ELID, el.ALID);
+			jobs.AddRange(childJobs);
+		}
+
+		return jobs;
+        
+    }
+
+    public int? ID { get; set; }
+    public string? USER { get; set; }
+    public string? NAME { get; set; }
+    public DateTime? DATE_ADDED { get; set; } = DateTime.Now;
+    public DateTime? DATE_FINISHED { get; set; }
+    public bool? FINISHED { get; set; } = false;
+    public bool? CANCELLED { get; set; } = false;
+
+    public List<LMMJob>? Jobs { get; set; } = new();
+}

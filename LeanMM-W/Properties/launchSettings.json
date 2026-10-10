@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "LeanMM-W (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "LeanMM-W (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

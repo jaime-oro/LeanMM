@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="AssyCopyTest/AssyCopyTest.csproj" Id="152f9c8b-3fb0-422a-8989-f0650efdf81b" />
+  <Project Path="LeanMM-Wk/LeanMM-Wk.csproj" Id="84269a51-b6a5-4556-b1ee-17e57129da09" />
+  <Project Path="LeanMM/LeanMM.csproj" />
+</Solution>

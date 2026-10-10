@@ -1,0 +1,148 @@
+﻿@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject IDialogService DialogService
+@inject DbService DbService
+
+<PageTitle>Explore</PageTitle>
+<FluentDialogProvider />
+
+<FluentButton OnClick="@OpenSearchDialogAsync"
+			  Appearance="@((VisibleMasterDatas == null || VisibleMasterDatas.Count == 0) ? ButtonAppearance.Primary : ButtonAppearance.Subtle)"
+			  Style="margin: 10px;">
+	@((VisibleMasterDatas == null || VisibleMasterDatas.Count == 0) ? "Buscar MasterDatas" : "Nueva Búsqueda")
+</FluentButton>
+
+@if (VisibleMasterDatas != null && VisibleMasterDatas.Count > 0)
+{
+	<FluentButton Style="margin: 10px;"
+				  Appearance="@ButtonAppearance.Subtle"
+				  OnClick="@(() => hideDetails = !hideDetails)">
+		@(hideDetails ? "Mostrar Detalles" : "Ocultar Detalles")
+	</FluentButton>
+}
+
+@if (VisibleMasterDatas != null)
+{
+	@if (VisibleMasterDatas.Count == 0)
+	{
+		<FluentMessageBar Intent="MessageBarIntent.Info">
+			No se encontraron resultados para "@searchTerm".
+		</FluentMessageBar>
+	}
+	else
+	{
+		<FluentDataGrid 
+			Items="@VisibleMasterDatas.AsQueryable()"
+			MultiLine="true"
+			TGridItem="MMMasterData"
+			ResizableColumns="true"
+			Style="width: 100%;">
+
+			<TemplateColumn Title="Código" MinWidth="800px;">
+				<div style=@($"display: flex; align-items: center; padding-left: {context.Level * 24}px;")>
+					@if (context.HasChildren)
+					{
+						<div @onclick="() => ToggleMasterdataAsync(context)" style="cursor: pointer; width: 24px; display: flex; align-items: center; justify-content: center;">
+							@if (context.IsExpanded)
+							{
+								<FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
+							}
+							else
+							{
+								<FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())" />
+							}
+						</div>
+					}
+					else
+					{
+						<!-- Espaciador para alinear los nodos finales (hojas) -->
+						<div style="width: 24px;" />
+					}
+
+					@if (context.HasChildren)
+					{
+						<FluentIcon Value="@(new Icons.Regular.Size16.Box())" Style="margin-right: 8px;" />
+					}
+					else
+					{
+						<FluentIcon Value="@(new Icons.Regular.Size16.AppFolder())" Style="margin-right: 8px;" />
+					}
+					<span>
+						<FluentLink Inline OnClick="@(() => OpenDetails(context))">
+							@context.NAME
+						</FluentLink>
+					</span>
+				</div>
+			</TemplateColumn>
+			@if (!hideDetails)
+			{
+				<PropertyColumn Property="@(p => p.GetQttyString())" Title="Ctd." Width="70px"/>
+				<PropertyColumn Property="@(p => p.TYPE)" Title="Gr." Width="60px" />
+			}
+			<PropertyColumn Property="@(p => p.DESCRIPTION)" Title="Descripción 1" />
+			@if (!hideDetails)
+			{
+				<PropertyColumn Property="@(p => p.DESCRIPTION2)" Title="Descripción 2" />
+			}
+		</FluentDataGrid>	
+	}
+}
+
+@code {
+	List<MMMasterData>? searchResults;
+	List<MMMasterData>? VisibleMasterDatas;
+	string? searchTerm { get; set; }
+	bool hideDetails { get; set; } = false;
+
+
+    private async Task OpenSearchDialogAsync()
+	{
+		var dialog = await DialogService.ShowDrawerAsync<MDSearchDialog>(options => { });
+
+		if (dialog.Cancelled || dialog.Value == null || dialog.Value.ToString() == null || string.IsNullOrWhiteSpace(dialog.Value.ToString()))
+		{
+			return;
+		}
+
+		searchTerm = dialog.Value.ToString();
+		searchResults = await DbService.MD_GetByNameResultsAsync(searchTerm!);
+		UpdateVisibleNodes();
+	}
+
+	private async Task OpenDetails(MMMasterData masterData)
+	{
+		var dialog = await DialogService.ShowDrawerAsync<MDDetailsDialog>(options =>
+		{
+			options.Parameters.Add(nameof(MDDetailsDialog.INFOS), masterData.INFOS);
+		});
+	}
+
+	private async Task ToggleMasterdataAsync(MMMasterData masterData)
+	{
+		masterData.IsExpanded = !masterData.IsExpanded;
+		masterData.Children = await DbService.MD_GetMDChildsByInfosAsync(masterData.INFOS, masterData.Level + 1);
+		UpdateVisibleNodes();
+		await InvokeAsync(StateHasChanged);
+	}
+
+	private void UpdateVisibleNodes()
+	{
+		var flatList = new List<MMMasterData>();
+		FlattenNodes(searchResults, flatList);
+		VisibleMasterDatas = flatList;
+	}
+
+	private void FlattenNodes(List<MMMasterData>? mMMasterDatas, List<MMMasterData> flatList)
+	{
+		if (mMMasterDatas == null) return;
+		foreach (var masterData in mMMasterDatas)
+		{
+			flatList.Add(masterData);
+			if (masterData.IsExpanded && masterData.HasChildren)
+			{
+				FlattenNodes(masterData.Children, flatList);
+			}
+		}
+	}
+}

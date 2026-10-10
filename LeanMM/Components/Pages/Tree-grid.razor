@@ -1,0 +1,152 @@
+﻿@page "/tree-grid"
+@rendermode InteractiveServer
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IDialogService DialogService
+
+<FluentDialogProvider />
+
+<h3>Árbol con Parámetros Alineados (TreeGrid)</h3>
+
+<FluentDataGrid 
+    Items="@VisibleNodes.AsQueryable()" 
+    MultiLine="true"
+    TGridItem="TreeNode" 
+    ResizableColumns="true"
+    Style="width: 100%;">
+
+    <!-- COLUMNA 1: El "Árbol" -->
+    <TemplateColumn Title="Elemento / Estructura">
+        <div style="display: flex; align-items: center; padding-left: @(context.Level * 24)px;">
+            @if (context.HasChildren)
+            {
+                <!-- Botón de expandir/colapsar -->
+                <div @onclick="() => ToggleNode(context)" style="cursor: pointer; width: 24px; display: flex; align-items: center; justify-content: center;">
+                    @if (context.IsExpanded)
+                    {
+                        <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
+                    }
+                    else
+                    {
+                        <FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())" />
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- Espaciador para alinear los nodos finales (hojas) -->
+                <div style="width: 24px;"></div>
+            }
+            <!-- Icono opcional de carpeta/archivo y el Nombre -->
+            @if (context.HasChildren)
+            {
+                <FluentIcon Value="@(new Icons.Regular.Size16.Folder())" Style="margin-right: 8px;" /> 
+            }
+            else
+            {
+                <FluentIcon Value="@(new Icons.Regular.Size16.Document())" Style="margin-right: 8px;" />
+            }
+            <span>
+                <FluentLink Inline OnClick="@(() => OpenDetails(context))">
+                    @context.Name
+                </FluentLink>
+            </span>
+        </div>
+    </TemplateColumn>
+
+    <!-- COLUMNAS DE PARÁMETROS -->
+    <PropertyColumn Property="@(p => p.IP)" Title="Dirección IP" />
+    <PropertyColumn Property="@(p => p.Estado)" Title="Estado" />
+    <PropertyColumn Property="@(p => p.Rol)" Title="Rol en el Sistema" />
+
+</FluentDataGrid>
+
+@code {
+    // Lista plana que alimenta el DataGrid
+    private List<TreeNode> VisibleNodes = new();
+
+    // Lista jerárquica original
+    private List<TreeNode> TreeData = new();
+
+    protected override void OnInitialized()
+    {
+        // 1. Cargamos los datos jerárquicos
+        TreeData = new List<TreeNode>
+        {
+            new TreeNode { Name = "Data Center Principal", Level = 0, IP = "-", Estado = "Activo", Rol = "Ubicación", IsExpanded = true, Children = new List<TreeNode>
+            {
+                new TreeNode { Name = "Servidor Web", Level = 1, IP = "192.168.1.10", Estado = "Online", Rol = "Frontend", IsExpanded = true, Children = new List<TreeNode>
+                {
+                    new TreeNode { Name = "Instancia Node 1", Level = 2, IP = "10.0.0.5", Estado = "Online", Rol = "Proceso" },
+                    new TreeNode { Name = "Instancia Node 2", Level = 2, IP = "10.0.0.6", Estado = "Warning", Rol = "Proceso" }
+                }},
+                new TreeNode { Name = "Servidor Base de Datos", Level = 1, IP = "192.168.1.50", Estado = "Online", Rol = "Backend" }
+            }},
+            new TreeNode { Name = "Data Center Respaldo", Level = 0, IP = "-", Estado = "Inactivo", Rol = "Ubicación", IsExpanded = false, Children = new List<TreeNode>
+            {
+                new TreeNode { Name = "Servidor DB Backup", Level = 1, IP = "192.168.2.50", Estado = "Offline", Rol = "Backup" }
+            }}
+        };
+
+        // 2. Procesamos la lista para mostrarla plana en la tabla
+        UpdateVisibleNodes();
+    }
+
+    private void ToggleNode(TreeNode node)
+    {
+        node.IsExpanded = !node.IsExpanded;
+        UpdateVisibleNodes();
+    }
+
+    // --- LÓGICA CORE: Aplana el árbol a una lista 1D según lo que está expandido ---
+    private void UpdateVisibleNodes()
+    {
+        var flatList = new List<TreeNode>();
+        FlattenNodes(TreeData, flatList);
+        VisibleNodes = flatList;
+    }
+
+    private void FlattenNodes(IEnumerable<TreeNode> nodes, List<TreeNode> flatList)
+    {
+        foreach (var node in nodes)
+        {
+            flatList.Add(node);
+
+            // Si el nodo está expandido y tiene hijos, agregamos sus hijos justo debajo
+            if (node.IsExpanded && node.HasChildren)
+            {
+                FlattenNodes(node.Children, flatList);
+            }
+        }
+    }
+
+	private async Task OpenDetails(TreeNode node)
+	{
+		// Aquí podrías abrir un diálogo o navegar a otra página con los detalles del nodo
+		Console.WriteLine($"Detalles del nodo: {node.Name}, IP: {node.IP}, Estado: {node.Estado}, Rol: {node.Rol}");
+
+        var result = await DialogService.ShowDrawerAsync<MDSearchDialog>(options => { });
+        if (result.Cancelled)
+        {
+            Console.WriteLine("Dialog cancelled");
+        }
+        else
+        {
+            Console.WriteLine("Dialog confirmed");
+        }
+	}
+
+    // --- MODELO ---
+    public class TreeNode
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Level { get; set; } // Profundidad (0 = Raíz, 1 = Hijo, etc)
+        public bool IsExpanded { get; set; } = false;
+        public bool HasChildren => Children != null && Children.Any();
+        public List<TreeNode> Children { get; set; } = new();
+
+        // Parámetros propios del nodo
+        public string IP { get; set; } = string.Empty;
+        public string Estado { get; set; } = string.Empty;
+        public string Rol { get; set; } = string.Empty;
+    }
+}

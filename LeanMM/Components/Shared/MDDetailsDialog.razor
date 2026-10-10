@@ -1,0 +1,151 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components
+@inject DbService DbService
+@inject IDialogService DialogService
+
+<FluentDialogBody>
+    <TitleTemplate>
+        <FluentStack VerticalAlignment="VerticalAlignment.Center">
+            <FluentIcon Value="@(new Icons.Regular.Size20.AppsListDetail())" />
+            <FluentLabel Typo="Typography.PaneHeader">Detalles del MasterData</FluentLabel>
+        </FluentStack>
+    </TitleTemplate>
+
+    <ChildContent>
+        <FluentStack Orientation="Orientation.Vertical" VerticalAlignment="VerticalAlignment.Center" Style="padding: 1rem 0;">
+            <FluentTextInput Label="Nombre" Value="@md.NAME" ReadOnly="true" Style="width: 100%;" />
+            <FluentTextInput Label="Tipo" Value="@md.TYPE" ReadOnly="true" Style="width: 100%;" />
+            <FluentTextInput Label="Descripción 1" Value="@md.DESCRIPTION" ReadOnly="true" Style="width: 100%;" />
+            <FluentTextInput Label="Descripción 2" Value="@md.DESCRIPTION2" ReadOnly="true" Style="width: 100%;" />
+            <FluentTextInput Label="Descripción 3" Value="@md.DESCRIPCION3" ReadOnly="true" Style="width: 100%;" />
+        </FluentStack>
+
+		@if(els.Any())
+        {
+            <FluentDataGrid Items="@visibleEls.Where(e => e.IsLatestVersion).AsQueryable()"
+                            MultiLine="true"
+                            TGridItem="MMElement"
+                            Style="width: 100%;">
+                <TemplateColumn Title="Elementos">
+                    <div style=@($"display: flex; align-items: center; padding-left: {context.Level * 24}px;")>
+                        @if (context.HasChildren)
+                        {
+                            <div @onclick="() => ToggleElementAsync(context)" style="cursor: pointer; width: 24px; display: flex; align-items: center; justify-content: center;">
+                                @if (context.IsExpanded)
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.ChevronDown())" />
+                                }
+                                else
+                                {
+                                    <FluentIcon Value="@(new Icons.Regular.Size16.ChevronRight())" />
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div style="width: 24px;" />
+                        }
+
+                        @if (context.CLASS_NAME?.Trim() == "MODEL_3D")
+                        {
+                            @if (context.HasChildren)
+                            {
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Apps())" Style="margin-right: 8px;" />
+                            }
+                            else
+                            {
+                                <FluentIcon Value="@(new Icons.Regular.Size16.Square())" Style="margin-right: 8px;" />
+                            }
+                        }
+						else if (context.CLASS_NAME?.Trim() == "MODEL_2D")
+                        {
+                            <FluentIcon Value="@(new Icons.Regular.Size16.Map())" Style="margin-right: 8px;" />
+                        }
+                        else
+                        {
+                            <FluentIcon Value="@(new Icons.Regular.Size16.Document())" Style="margin-right: 8px;" />
+                        }
+                        <span>
+                            <FluentLink Inline OnClick="@(() => OpenElementDetails(context))">
+                                @if(context.Quantity != decimal.Zero)
+                                {
+                                    @(string.Format("{0}={1} ({2}x)", context.Name.Trim(), context.Version, context.Quantity))
+                                }
+                                else
+                                {
+                                    @(string.Format("{0}={1}", context.Name.Trim(), context.Version))
+                                }
+                            </FluentLink>
+                        </span>
+                    </div>
+                </TemplateColumn>
+            </FluentDataGrid>
+		}
+    </ChildContent>
+
+    <ActionTemplate>
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Dialog.CancelAsync())">
+            Cerrar
+        </FluentButton>
+    </ActionTemplate>
+</FluentDialogBody>
+
+@code {
+    [CascadingParameter]
+    public required IDialogInstance Dialog { get; set; }
+
+    [Parameter]
+    public string? INFOS { get; set; }
+
+    private MMMasterData md { get; set; } = new();
+
+    private List<MMElement> els { get; set; } = new();
+    private List<MMElement> visibleEls { get; set; } = new();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        md = await DbService.MD_GetByInfosAsync(INFOS!) ?? new MMMasterData();
+        els = await DbService.EL_GetChildsByInfosAsync(md.INFOS, 0);
+		UpdateVisibleNodes();
+    }
+
+    private async Task OpenElementDetails(MMElement el)
+    {
+		if (el.ClassName == "MODEL_3D")
+		{
+			var dialog = await DialogService.ShowDialogAsync<M3DDetailsDialog>(options =>
+			{
+				options.Parameters.Add(nameof(M3DDetailsDialog.INFOS), el.INFOS);
+			});
+		}
+    }
+
+
+    private async Task ToggleElementAsync(MMElement el)
+    {
+        el.IsExpanded = !el.IsExpanded;
+        el.Children = await DbService.EL_GetChildsByInfosAsync(el.INFOS, el.Level + 1);
+        UpdateVisibleNodes();
+    }
+
+    private void UpdateVisibleNodes()
+    {
+        var flatList = new List<MMElement>();
+        FlattenNodes(els, flatList);
+        visibleEls = flatList;
+	}
+
+	private void FlattenNodes(List<MMElement>? _els, List<MMElement> flatList)
+	{
+		if (_els == null) return;
+		foreach (var _el in _els)
+		{
+			flatList.Add(_el);
+			if (_el.IsExpanded && _el.Children != null)
+			{
+				FlattenNodes(_el.Children, flatList);
+			}
+		}
+	}
+
+}

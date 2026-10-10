@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="LeanMM_W.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Connection Manager">
+
+    <!-- Grid defined with 1 Star row so the log console expands vertically -->
+    <Grid Padding="24" RowDefinitions="Auto,*" ColumnDefinitions="*">
+
+        <!-- Connection Form Area (Stretches Full Width) -->
+        <StackPanel Grid.Row="0" Spacing="12" HorizontalAlignment="Stretch">
+            <TextBlock Text="Server Configuration" 
+                       Style="{ThemeResource TitleTextBlockStyle}" 
+                       Margin="0,0,0,4" />
+
+            <!-- Row 1: Server and Username side-by-side -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                <TextBox x:Name="ServerInput" 
+                         Grid.Column="0"
+                         Header="Server" 
+                         PlaceholderText="e.g., 192.168.1.100 or localhost" 
+                         HorizontalAlignment="Stretch"/>
+
+                <TextBox x:Name="UsernameInput" 
+                         Grid.Column="1"
+                         Header="Username" 
+                         PlaceholderText="Enter your admin username" 
+                         HorizontalAlignment="Stretch"/>
+            </Grid>
+
+            <!-- Row 2: Password and Working Path side-by-side -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+                <PasswordBox x:Name="PasswordInput" 
+                             Grid.Column="0"
+                             Header="Password" 
+                             PlaceholderText="Enter your password" 
+                             HorizontalAlignment="Stretch"/>
+
+                <TextBox x:Name="PathInput" 
+                            Grid.Column="0"
+                            Header="Working Path" 
+                            PlaceholderText="C:\App\WorkingDir" 
+                            HorizontalAlignment="Stretch"/>
+            </Grid>
+
+            <!-- Connect Button aligned to the right -->
+            <Button x:Name="ConnectButton" 
+                    Content="Connect to Server" 
+                    Style="{ThemeResource AccentButtonStyle}" 
+                    Click="ConnectButton_Click" 
+                    HorizontalAlignment="Right" 
+                    Margin="0,8,0,0"
+                    Width="160"/>
+        </StackPanel>
+
+        <!-- Log Console Area (Fills all remaining vertical & horizontal space) -->
+        <Grid Grid.Row="1" Margin="0,20,0,0" RowDefinitions="Auto,*">
+            <TextBlock Grid.Row="0"
+                       Text="System Logs" 
+                       Style="{ThemeResource SubtitleTextBlockStyle}" 
+                       Margin="0,0,0,8"/>
+
+            <TextBox x:Name="LogConsole" 
+                     Grid.Row="1" 
+                     IsReadOnly="True" 
+                     AcceptsReturn="True" 
+                     TextWrapping="Wrap" 
+                     ScrollViewer.VerticalScrollBarVisibility="Auto" 
+                     FontFamily="Consolas"
+                     Background="{ThemeResource LayerFillColorDefaultBrush}"
+                     BorderThickness="1"
+                     HorizontalAlignment="Stretch"
+                     VerticalAlignment="Stretch"/>
+        </Grid>
+    </Grid>
+</Window>

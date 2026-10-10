@@ -1,0 +1,43 @@
+﻿@page "/tasks"
+@using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
+@rendermode InteractiveServer
+@inject DbService DbService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Descargas Pendientes</PageTitle>
+
+<h1>Descargas Pendientes</h1>
+
+@if (tasks != null)
+{
+	@foreach (var task in tasks)
+	{
+		<FluentCard Style="margin: 10px; padding: 10px;">
+			<FluentStack Orientation="Orientation.Vertical" VerticalGap="5">
+				<FluentLabel>Nombre: @task.NAME</FluentLabel>
+				<FluentLabel>Fecha: @task.DATE_ADDED</FluentLabel>
+				<FluentLabel>Archivos pendientes: @task!.Jobs!.Count(j => (!j.Finished) ?? false)</FluentLabel>
+				<FluentLabel>Archivos descargados: @task!.Jobs!.Count(j => j.Finished ?? false)</FluentLabel>
+			</FluentStack>
+		</FluentCard>	
+	}
+}
+else
+{
+	<FluentMessageBar Intent="MessageBarIntent.Info">
+		Cargando Descargas Pendientes...
+	</FluentMessageBar>
+}
+
+
+
+@code {
+	public List<LMMTask>? tasks { get; set; }
+
+
+	protected override async Task OnInitializedAsync()
+	{
+		tasks = await DbService.LMMTask_GetByUserName(((SimpleAuthenticationStateProvider)AuthStateProvider).UserName);
+	}
+}

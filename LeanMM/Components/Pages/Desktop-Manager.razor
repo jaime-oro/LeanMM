@@ -1,0 +1,61 @@
+﻿@page "/desktop-manager"
+@rendermode InteractiveServer
+
+@using LeanMM.Hubs
+@using Microsoft.AspNetCore.SignalR
+
+@inject DesktopHubService HubService
+@inject IHubContext<DesktopHub> HubContext
+@implements IDisposable
+
+<h3>Desktop Manager</h3>
+
+<div>
+    <h4>Send Message to Computer</h4>
+    <input @bind="targetComputerId" placeholder="Target Computer Name" />
+    <input @bind="messageToSend" placeholder="Message..." />
+    <button @onclick="SendToClient">Send</button>
+</div>
+
+<hr />
+
+<h4>Incoming Messages from Clients:</h4>
+<ul>
+    @foreach (var msg in incomingMessages)
+    {
+        <li>@msg</li>
+    }
+</ul>
+
+@code {
+    private string targetComputerId = "";
+    private string messageToSend = "";
+    private List<string> incomingMessages = new();
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to the service event when the component loads
+        HubService.OnMessageReceived += HandleClientMessage;
+    }
+
+    private void HandleClientMessage(string computerId, string message)
+    {
+        // Use InvokeAsync to safely update the Blazor UI thread
+        InvokeAsync(() =>
+        {
+            incomingMessages.Add($"[{computerId}]: {message}");
+            StateHasChanged();
+        });
+    }
+
+    private async Task SendToClient()
+    {
+        await HubContext.Clients.Group(targetComputerId).SendAsync("ReceiveMessage", messageToSend);
+    }
+
+    public void Dispose()
+    {
+        // Unsubscribe to prevent memory leaks
+        HubService.OnMessageReceived -= HandleClientMessage;
+    }
+}

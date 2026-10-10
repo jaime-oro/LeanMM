@@ -1,0 +1,35 @@
+﻿@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentDialogBody>
+    <TitleTemplate>
+        <FluentStack VerticalAlignment="VerticalAlignment.Center">
+            <FluentIcon Value="@(new Icons.Regular.Size20.DatabaseSearch())" />
+            <FluentLabel Typo="Typography.PaneHeader">Buscar MasterData por Código</FluentLabel>
+        </FluentStack>
+    </TitleTemplate>
+
+    <ChildContent>
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" Style="padding: 1rem 0;">
+            <FluentTextInput @bind-Value="SearchTerm"
+                             Placeholder="Código..." 
+                             Style="flex-grow: 1;"
+                             @onkeyup="@(e => { if (e.Key == "Enter") Dialog.CloseAsync(SearchTerm); })" />            
+            <FluentButton Appearance="ButtonAppearance.Primary" OnClick="@(() => Dialog.CloseAsync(SearchTerm))">
+                Buscar
+            </FluentButton>
+        </FluentStack>
+    </ChildContent>
+
+    <ActionTemplate>
+        <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="@(() => Dialog.CancelAsync())">
+            Cancelar
+        </FluentButton>
+    </ActionTemplate>
+</FluentDialogBody>
+
+@code {
+	[CascadingParameter]
+	public required IDialogInstance Dialog { get; set; }
+
+	public string? SearchTerm { get; set; }
+}

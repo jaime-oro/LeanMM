@@ -1,0 +1,40 @@
+﻿@inherits LayoutComponentBase
+
+<FluentLayout>
+    <FluentLayoutItem Area="LayoutArea.Header">
+        <FluentLayoutHamburger />
+        <strong>LeanMM</strong>
+    </FluentLayoutItem>
+    <FluentLayoutItem Area="LayoutArea.Navigation">
+        <NavMenu />
+    </FluentLayoutItem>
+    <FluentLayoutItem Area="LayoutArea.Content" Class="main">
+        <div class="content">
+            @Body
+        </div>
+    </FluentLayoutItem>
+
+    <FluentLayoutItem Area="LayoutArea.Footer">
+        <div style="display: flex">
+            <FluentSpacer />
+            <FluentLink Href="https://learn.microsoft.com/en-us/aspnet/core/blazor" Target="LinkTarget.Blank" IconEnd="@(new Icons.Regular.Size16.ArrowDownloadOff())">
+                LeanMM-Worker No Iniciado               
+            </FluentLink>
+
+            <FluentLink Href="https://learn.microsoft.com/en-us/aspnet/core/blazor" Target="LinkTarget.Blank" IconEnd="@(new Icons.Regular.Size16.ArrowDownload())">
+                LeanMM-Worker Descargando
+            </FluentLink>
+
+            <FluentLink Href="https://learn.microsoft.com/en-us/aspnet/core/blazor" Target="LinkTarget.Blank" IconEnd="@(new Icons.Regular.Size16.CheckmarkCircle())">
+                LeanMM-Worker Listo
+            </FluentLink>
+
+        </div>
+    </FluentLayoutItem>
+</FluentLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
